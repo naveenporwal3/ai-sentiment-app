@@ -3,7 +3,8 @@ from PyPDF2 import PdfReader
 import google.generativeai as genai
 
 # 1. Setup your Gemini API Key
-genai.configure(api_key="YOUR_GEMINI_API_KEY")
+# This pulls the key from your secrets.toml (local) or Streamlit Cloud (online)
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 def extract_text(pdf_docs):
     text = ""
