@@ -44,7 +44,7 @@ if "raw_text" in st.session_state:
     user_question = st.text_input("Ask a question about your data:")
     
     if user_question:
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash-lite')
         
         # Professional Reporting Prompt
         full_prompt = f"""
