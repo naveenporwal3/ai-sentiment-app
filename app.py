@@ -76,7 +76,6 @@ if "text_chunks" in st.session_state:
 
     if user_question:
 
-        # Limit context to avoid token and quota abuse
         context = " ".join(st.session_state.text_chunks[:3])
 
         prompt = f"""
@@ -111,4 +110,9 @@ Question:
 
         except Exception:
             st.error(
-                "⚠️ Something we
+                "⚠️ Something went wrong while generating the response. "
+                "Please try again later."
+            )
+
+else:
+    st.info("Upload PDF documents from the sidebar to begin analysis.")
