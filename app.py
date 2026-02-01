@@ -1,7 +1,6 @@
 import streamlit as st
 from PyPDF2 import PdfReader
-import google.generativeai as genai
-from google.api_core import exceptions
+from openai import OpenAI
 
 # --------------------------------------------------
 # Page Configuration
@@ -12,13 +11,15 @@ st.set_page_config(
 )
 
 # --------------------------------------------------
-# Gemini Configuration
+# OpenAI Configuration
 # --------------------------------------------------
-if "GEMINI_API_KEY" not in st.secrets:
-    st.error("Gemini API key not configured.")
+if "api_keys" not in st.secrets or "openai_api_key" not in st.secrets["api_keys"]:
+    st.error("OpenAI API key not configured.")
     st.stop()
 
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+client = OpenAI(
+    api_key=st.secrets["api_keys"]["openai_api_key"]
+)
 
 # --------------------------------------------------
 # Functions
@@ -48,7 +49,7 @@ def split_text(text, chunk_size=2000, overlap=200):
 # UI
 # --------------------------------------------------
 st.title("📄 Smart AI Document Assistant")
-st.caption("AI-powered business document insights using Google Gemini")
+st.caption("AI-powered business document insights using OpenAI")
 
 with st.sidebar:
     st.header("📂 Upload Documents")
@@ -93,24 +94,22 @@ Question:
 """
 
         try:
-            model = genai.GenerativeModel("gemini-2.5-flash-lite")
-
             with st.spinner("Generating AI response..."):
-                response = model.generate_content(prompt)
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "You are a professional business analyst."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.2
+                )
 
                 st.subheader("📊 AI Response")
-                st.write(response.text)
-
-        except exceptions.ResourceExhausted:
-            st.warning(
-                "⚠️ AI service is temporarily busy due to high usage. "
-                "Please try again after some time."
-            )
+                st.write(response.choices[0].message.content)
 
         except Exception:
             st.error(
-                "⚠️ Unable to generate response right now. "
-                "Please try again later."
+                "⚠️ Unable to generate response right now. Please try again later."
             )
 
 else:
