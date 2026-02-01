@@ -1,7 +1,7 @@
 import streamlit as st
 from PyPDF2 import PdfReader
-from google import genai
-from google.genai import errors
+import google.generativeai as genai
+from google.api_core import exceptions
 
 # --------------------------------------------------
 # Page Configuration
@@ -18,7 +18,7 @@ if "GEMINI_API_KEY" not in st.secrets:
     st.error("Gemini API key is not configured.")
     st.stop()
 
-client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 # --------------------------------------------------
 # Utility Functions
@@ -93,18 +93,17 @@ Question:
 """
 
         try:
+            model = genai.GenerativeModel("gemini-2.5-flash-lite")
+
             with st.spinner("Generating AI response..."):
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash-lite",
-                    contents=prompt
-                )
+                response = model.generate_content(prompt)
 
                 st.subheader("📊 AI Response")
                 st.write(response.text)
 
-        except errors.ResourceExhausted:
+        except exceptions.ResourceExhausted:
             st.warning(
-                "⚠️ The AI service is temporarily busy due to high usage. "
+                "⚠️ AI service is temporarily busy due to high usage. "
                 "Please wait a few seconds and try again."
             )
 
