@@ -1,35 +1,36 @@
 import streamlit as st
 from PyPDF2 import PdfReader
-import google.generativeai as genai
+from google import genai
+from google.genai import errors
 
-# -----------------------------------
-# Page Config
-# -----------------------------------
+# --------------------------------------------------
+# Page Configuration
+# --------------------------------------------------
 st.set_page_config(
     page_title="AI Document Assistant",
     layout="wide"
 )
 
-# -----------------------------------
-# Gemini API Config
-# -----------------------------------
-if "GEMINI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-else:
-    st.error("Please add GEMINI_API_KEY in Streamlit secrets.")
+# --------------------------------------------------
+# Gemini API Configuration
+# --------------------------------------------------
+if "GEMINI_API_KEY" not in st.secrets:
+    st.error("Gemini API key is not configured.")
     st.stop()
 
-# -----------------------------------
-# Functions
-# -----------------------------------
+client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+
+# --------------------------------------------------
+# Utility Functions
+# --------------------------------------------------
 def extract_text(pdf_docs):
     text = ""
     for pdf in pdf_docs:
         reader = PdfReader(pdf)
         for page in reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text
+            content = page.extract_text()
+            if content:
+                text += content
     return text
 
 
@@ -43,13 +44,12 @@ def split_text(text, chunk_size=2000, overlap=200):
     return chunks
 
 
-# -----------------------------------
+# --------------------------------------------------
 # UI
-# -----------------------------------
+# --------------------------------------------------
 st.title("📄 Smart AI Document Assistant")
-st.markdown("Upload PDF reports and ask business questions.")
+st.caption("AI-powered business document insights using Google Gemini")
 
-# Sidebar
 with st.sidebar:
     st.header("📂 Upload Documents")
 
@@ -60,32 +60,31 @@ with st.sidebar:
 
     if st.button("Analyze Documents"):
         if not pdf_docs:
-            st.warning("Please upload at least one PDF.")
+            st.warning("Please upload at least one PDF file.")
         else:
             with st.spinner("Reading documents..."):
                 raw_text = extract_text(pdf_docs)
-                chunks = split_text(raw_text)
-                st.session_state.text_chunks = chunks
+                st.session_state.text_chunks = split_text(raw_text)
                 st.success("Documents processed successfully!")
 
-# -----------------------------------
+# --------------------------------------------------
 # Chat Section
-# -----------------------------------
+# --------------------------------------------------
 if "text_chunks" in st.session_state:
 
     user_question = st.text_input("Ask a question from the document:")
 
     if user_question:
-        model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
-        # use only limited chunks to avoid token issue
+        # Limit context to avoid token and quota abuse
         context = " ".join(st.session_state.text_chunks[:3])
 
         prompt = f"""
 You are a professional business reporting assistant.
 
 Answer ONLY using the context below.
-If information is not available, say "Not found in document".
+If the answer is not available, say:
+"Information not found in the document."
 
 Context:
 {context}
@@ -94,10 +93,22 @@ Question:
 {user_question}
 """
 
-        with st.spinner("Generating response..."):
-            response = model.generate_content(prompt)
-            st.subheader("📊 AI Response")
-            st.write(response.text)
+        try:
+            with st.spinner("Generating AI response..."):
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash-lite",
+                    contents=prompt
+                )
 
-else:
-    st.info("Upload PDF documents from the sidebar to start.")
+                st.subheader("📊 AI Response")
+                st.write(response.text)
+
+        except errors.ResourceExhausted:
+            st.warning(
+                "⚠️ The AI service is temporarily busy due to high usage. "
+                "Please wait a few seconds and try again."
+            )
+
+        except Exception:
+            st.error(
+                "⚠️ Something we
