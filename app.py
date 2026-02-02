@@ -1,6 +1,7 @@
 import streamlit as st
 from PyPDF2 import PdfReader
-from openai import OpenAI
+import google.generativeai as genai
+from google.api_core import exceptions
 
 # --------------------------------------------------
 # Page Configuration
@@ -11,14 +12,14 @@ st.set_page_config(
 )
 
 # --------------------------------------------------
-# OpenAI Configuration
+# Gemini Configuration
 # --------------------------------------------------
-if "api_keys" not in st.secrets or "openai_api_key" not in st.secrets["api_keys"]:
-    st.error("OpenAI API key not configured.")
+if "api_keys" not in st.secrets or "google_api_key" not in st.secrets["api_keys"]:
+    st.error("Gemini API key not configured.")
     st.stop()
 
-client = OpenAI(
-    api_key=st.secrets["api_keys"]["openai_api_key"]
+genai.configure(
+    api_key=st.secrets["api_keys"]["google_api_key"]
 )
 
 # --------------------------------------------------
@@ -49,7 +50,7 @@ def split_text(text, chunk_size=2000, overlap=200):
 # UI
 # --------------------------------------------------
 st.title("📄 Smart AI Document Assistant")
-st.caption("AI-powered business document insights using OpenAI")
+st.caption("AI-powered business document insights using Gemini")
 
 with st.sidebar:
     st.header("📂 Upload Documents")
@@ -75,7 +76,7 @@ if "chunks" in st.session_state:
 
     question = st.text_input("Ask a question about the document:")
 
-    if question:
+    if st.button("Get AI Answer"):
 
         context = " ".join(st.session_state.chunks[:3])
 
@@ -94,18 +95,19 @@ Question:
 """
 
         try:
-            with st.spinner("Generating AI response..."):
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "You are a professional business analyst."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.2
-                )
+            model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
-                st.subheader("📊 AI Response")
-                st.write(response.choices[0].message.content)
+            with st.spinner("Generating AI response..."):
+                response = model.generate_content(prompt)
+
+            st.subheader("📊 AI Response")
+            st.write(response.text)
+
+        except exceptions.ResourceExhausted:
+            st.warning(
+                "⚠️ Gemini free API quota reached. "
+                "Please wait and try again later."
+            )
 
         except Exception:
             st.error(
