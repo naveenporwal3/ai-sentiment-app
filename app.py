@@ -4,7 +4,7 @@ import google.generativeai as genai
 from google.api_core import exceptions
 
 # --------------------------------------------------
-# Page Configuration & Custom Branding
+# 1. Page Configuration & Custom Branding
 # --------------------------------------------------
 st.set_page_config(
     page_title="Smart AI Document Assistant",
@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Inject Custom CSS for Premium Look
+# Professional CSS for SaaS look and feel
 st.markdown("""
     <style>
     /* Main Background */
@@ -57,7 +57,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --------------------------------------------------
-# Gemini Configuration
+# 2. Gemini Configuration
 # --------------------------------------------------
 if "api_keys" not in st.secrets or "google_api_key" not in st.secrets["api_keys"]:
     st.error("Gemini API key not configured in secrets.toml.")
@@ -66,7 +66,7 @@ if "api_keys" not in st.secrets or "google_api_key" not in st.secrets["api_keys"
 genai.configure(api_key=st.secrets["api_keys"]["google_api_key"])
 
 # --------------------------------------------------
-# Helper Functions
+# 3. Processing Logic
 # --------------------------------------------------
 def extract_text(pdf_docs):
     text = ""
@@ -87,7 +87,7 @@ def split_text(text, chunk_size=2000, overlap=200):
     return chunks
 
 # --------------------------------------------------
-# Sidebar UI
+# 4. Sidebar / Control Center & Contact
 # --------------------------------------------------
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2103/2103633.png", width=80)
@@ -99,53 +99,83 @@ with st.sidebar:
 
     if st.button("🚀 Process Knowledge Base"):
         if not pdf_docs:
-            st.warning("Please upload a file.")
+            st.warning("Please upload a file first.")
         else:
             with st.spinner("Processing PDF Content..."):
                 raw_text = extract_text(pdf_docs)
                 st.session_state.chunks = split_text(raw_text)
-                st.session_state.chat_history = [] # Reset chat for new docs
+                st.session_state.messages = [] 
                 st.success("Knowledge Base Ready!")
 
+    # Contact Information Section
+    st.markdown("---")
+    st.header("👨‍💻 Contact Me")
+    st.markdown("""
+        **Naveen Porwal** *Data Analyst* 📧 [naveenporwal3@hotmail.com](mailto:naveenporwal3@hotmail.com)  
+        📞 +91 9250 933 584  
+        📍 Bangalore, India  
+        
+        [**LinkedIn Profile**](https://www.linkedin.com/in/naveen-porwal/)
+    """)
+
 # --------------------------------------------------
-# Main UI Logic
+# 5. Main UI Display
 # --------------------------------------------------
-# Header
 st.markdown('<h1 style="color:#1e293b; margin-bottom:0;">📄 Smart AI Document Assistant</h1>', unsafe_allow_html=True)
 st.markdown("""
     <div style="margin-bottom: 25px;">
-        <span class="badge">GEMINI 1.5 PRO</span>
+        <span class="badge">GEMINI 1.5 FLASH</span>
         <span class="badge">RAG ARCHITECTURE</span>
         <span class="badge">SECURE ANALYSIS</span>
     </div>
     """, unsafe_allow_html=True)
 
 if "chunks" in st.session_state:
-    # Use st.chat_input for a modern look
-    if question := st.chat_input("Ask anything about your documents..."):
-        
-        # Display user message
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"], avatar=message.get("avatar")):
+            st.markdown(message["content"])
+
+    if question := st.chat_input("Ask a question about your documents..."):
+        st.session_state.messages.append({"role": "user", "content": question, "avatar": "👤"})
         with st.chat_message("user", avatar="👤"):
             st.markdown(question)
 
-        # Generate Response
-        context = " ".join(st.session_state.chunks[:3])
-        prompt = f"Use this context: {context}\n\nQuestion: {question}\n\nAnswer professionally:"
+        context = " ".join(st.session_state.chunks[:4])
+        prompt = f"Use this context: {context}\nQuestion: {question}\nAnswer ONLY based on context:"
 
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash") # Use flash for speed
-            
+            model = genai.GenerativeModel("gemini-1.5-flash")
             with st.chat_message("assistant", avatar="🤖"):
                 with st.spinner("Analyzing..."):
                     response = model.generate_content(prompt)
-                    st.markdown(response.text)
-                    
+                    answer = response.text
+                    st.markdown(answer)
+            st.session_state.messages.append({"role": "assistant", "content": answer, "avatar": "🤖"})
         except exceptions.ResourceExhausted:
-            st.warning("Quota reached. Please try again in 60 seconds.")
+            st.error("⚠️ API Quota exhausted. Try again in 60s.")
         except Exception as e:
-            st.error("An error occurred. Check your API key or connection.")
-
+            st.error(f"⚠️ Error: {str(e)}")
 else:
-    # Beautiful Empty State
-    st.info("👋 Welcome! Please upload your PDF documents in the sidebar to begin the analysis.")
-    st.image("https://images.unsplash.com/photo-1551288049-bbbda546697a?auto=format&fit=crop&q=80&w=1000&h=400", use_column_width=True)
+    st.markdown("---")
+    st.info("👋 **Welcome!** Please upload your PDF documents in the sidebar to begin.")
+    
+    st.image(
+        "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1000", 
+        caption="AI-Powered Document Intelligence",
+        use_container_width=True
+    )
+    
+    
+    
+    st.markdown("""
+        ### Quick Start Guide:
+        1. **Upload**: Use the sidebar to upload business PDFs.
+        2. **Process**: Click 'Process Knowledge Base' to index data.
+        3. **Chat**: Ask specific questions to extract insights.
+    """)
+
+st.markdown("---")
+st.caption("Naveen Porwal | Portfolio 2026 | Powered by Google Gemini")
