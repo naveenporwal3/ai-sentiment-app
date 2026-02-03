@@ -4,55 +4,41 @@ import google.generativeai as genai
 from google.api_core import exceptions
 
 # --------------------------------------------------
-# 1. Page Configuration & Custom Branding
+# 1. Page Configuration
 # --------------------------------------------------
 st.set_page_config(
-    page_title="Smart AI Document Assistant",
+    page_title="AI Document Assistant",
     page_icon="📄",
     layout="wide"
 )
 
-# Professional CSS for SaaS look and feel
+# Optimized CSS for Single-Page View
 st.markdown("""
     <style>
-    /* Main Background */
-    .stApp {
-        background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
-    }
+    .stApp { background: #f8fafc; }
+    
+    /* Tighten Header Spacing */
+    .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
     
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background-color: rgba(255, 255, 255, 0.4);
-        backdrop-filter: blur(10px);
-        border-right: 1px solid rgba(0,0,0,0.05);
+        background-color: rgba(255, 255, 255, 0.8);
+        border-right: 1px solid #e2e8f0;
     }
 
     /* Button Styling */
     div.stButton > button:first-child {
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        background: #6366f1;
         color: white;
-        border-radius: 10px;
-        border: none;
+        border-radius: 8px;
         font-weight: 600;
         width: 100%;
-        transition: all 0.3s ease;
     }
-    div.stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-    }
-
-    /* Badge Styling */
-    .badge {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: bold;
-        margin-right: 8px;
-        background: #e0e7ff;
-        color: #4338ca;
-    }
+    
+    /* Hide Streamlit Branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -60,7 +46,7 @@ st.markdown("""
 # 2. Gemini Configuration
 # --------------------------------------------------
 if "api_keys" not in st.secrets or "google_api_key" not in st.secrets["api_keys"]:
-    st.error("Gemini API key not configured in secrets.toml.")
+    st.error("API key not found.")
     st.stop()
 
 genai.configure(api_key=st.secrets["api_keys"]["google_api_key"])
@@ -87,53 +73,42 @@ def split_text(text, chunk_size=2000, overlap=200):
     return chunks
 
 # --------------------------------------------------
-# 4. Sidebar / Control Center & Contact
+# 4. Sidebar Control & Contact
 # --------------------------------------------------
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/2103/2103633.png", width=80)
-    st.title("Control Center")
-    st.markdown("---")
+    st.title("📄 Doc Assistant")
     
-    st.header("📂 Data Source")
-    pdf_docs = st.file_uploader("Upload business PDFs", accept_multiple_files=True)
+    pdf_docs = st.file_uploader("Upload PDF Documents", accept_multiple_files=True)
 
-    if st.button("🚀 Process Knowledge Base"):
+    if st.button("Analyze Data"):
         if not pdf_docs:
-            st.warning("Please upload a file first.")
+            st.warning("Upload a file.")
         else:
-            with st.spinner("Processing PDF Content..."):
+            with st.spinner("Processing..."):
                 raw_text = extract_text(pdf_docs)
                 st.session_state.chunks = split_text(raw_text)
                 st.session_state.messages = [] 
-                st.success("Knowledge Base Ready!")
+                st.success("Ready!")
 
-    # Contact Information Section
+    # Moved Image to Sidebar to save space on main page
+    st.image("https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=400", use_container_width=True)
+
     st.markdown("---")
-    st.header("👨‍💻 Contact Me")
     st.markdown("""
-        **Naveen Porwal** *Data Analyst* 📧 [naveenporwal3@hotmail.com](mailto:naveenporwal3@hotmail.com)  
-        📞 +91 9250 933 584  
-        📍 Bangalore, India  
-        
-        [**LinkedIn Profile**](https://www.linkedin.com/in/naveen-porwal/)
+        **Naveen Porwal** 📧 [Email Me](mailto:naveenporwal3@hotmail.com)  
+        🔗 [LinkedIn](https://www.linkedin.com/in/naveen-porwal/)
     """)
 
 # --------------------------------------------------
-# 5. Main UI Display
+# 5. Main UI
 # --------------------------------------------------
-st.markdown('<h1 style="color:#1e293b; margin-bottom:0;">📄 Smart AI Document Assistant</h1>', unsafe_allow_html=True)
-st.markdown("""
-    <div style="margin-bottom: 25px;">
-        <span class="badge">GEMINI 1.5 FLASH</span>
-        <span class="badge">RAG ARCHITECTURE</span>
-        <span class="badge">SECURE ANALYSIS</span>
-    </div>
-    """, unsafe_allow_html=True)
+st.subheader("Smart Document Chat")
 
 if "chunks" in st.session_state:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
+    # Chat history container
     for message in st.session_state.messages:
         with st.chat_message(message["role"], avatar=message.get("avatar")):
             st.markdown(message["content"])
@@ -144,38 +119,25 @@ if "chunks" in st.session_state:
             st.markdown(question)
 
         context = " ".join(st.session_state.chunks[:4])
-        prompt = f"Use this context: {context}\nQuestion: {question}\nAnswer ONLY based on context:"
+        prompt = f"Context: {context}\nQuestion: {question}\nAnswer using context only:"
 
         try:
             model = genai.GenerativeModel("gemini-1.5-flash")
             with st.chat_message("assistant", avatar="🤖"):
-                with st.spinner("Analyzing..."):
-                    response = model.generate_content(prompt)
-                    answer = response.text
-                    st.markdown(answer)
+                response = model.generate_content(prompt)
+                answer = response.text
+                st.markdown(answer)
             st.session_state.messages.append({"role": "assistant", "content": answer, "avatar": "🤖"})
-        except exceptions.ResourceExhausted:
-            st.error("⚠️ API Quota exhausted. Try again in 60s.")
         except Exception as e:
-            st.error(f"⚠️ Error: {str(e)}")
+            st.error("Error generating response.")
 else:
-    st.markdown("---")
-    st.info("👋 **Welcome!** Please upload your PDF documents in the sidebar to begin.")
-    
-    st.image(
-        "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1000", 
-        caption="AI-Powered Document Intelligence",
-        use_container_width=True
-    )
+    st.info("👋 **Welcome!** Upload PDFs in the sidebar to begin.")
     
     
     
     st.markdown("""
-        ### Quick Start Guide:
-        1. **Upload**: Use the sidebar to upload business PDFs.
-        2. **Process**: Click 'Process Knowledge Base' to index data.
-        3. **Chat**: Ask specific questions to extract insights.
+        **Quick Start:**
+        1. Upload your files.
+        2. Click 'Analyze Data'.
+        3. Start chatting here.
     """)
-
-st.markdown("---")
-st.caption("Naveen Porwal | Portfolio 2026 | Powered by Google Gemini")
